@@ -12,7 +12,7 @@ def setup_environment(eomt_path="eomt"):
     if abs_eomt_path not in sys.path:
         sys.path.insert(0, abs_eomt_path)
     seed_everything(0, verbose=False)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
     
     warnings.filterwarnings(
         "ignore",
