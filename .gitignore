@@ -1,4 +1,5 @@
 .venv/
 datasets/
-trained_models/
+eomt/weights
 .DS_Store
+__pycache__/
