@@ -5,3 +5,4 @@ eomt/weights
 __pycache__/
 *.log
 wandb/
+.vscode/
