@@ -595,7 +595,8 @@ class LightningModule(lightning.LightningModule):
 
         block_postfix = self.block_postfix(block_idx)
         name = f"{log_prefix}_pred_{batch_idx}{block_postfix}"
-        self.trainer.logger.experiment.log({name: [wandb.Image(Image.open(buf))]})
+        if self.trainer.logger:
+            self.trainer.logger.experiment.log({name: [wandb.Image(Image.open(buf))]})
 
     @torch.compiler.disable
     def scale_img_size_semantic(self, size: tuple[int, int]):

@@ -25,6 +25,7 @@ class CityscapesSemantic(LightningDataModule):
         color_jitter_enabled=True,
         scale_range=(0.5, 2.0),
         check_empty_targets=True,
+        **kwargs,
     ) -> None:
         super().__init__(
             path=path,
