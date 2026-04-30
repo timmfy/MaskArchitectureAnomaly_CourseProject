@@ -3,3 +3,5 @@ datasets/
 eomt/weights
 .DS_Store
 __pycache__/
+*.log
+wandb/
