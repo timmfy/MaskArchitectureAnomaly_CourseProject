@@ -10,11 +10,11 @@ coco_to_cityscape = {
     7: 16,   # train -> train
     8: 14,   # truck -> truck
     10: 6,   # traffic light -> traffic light
-    13: 7,   # stop sign -> traffic sign (Approssimazione standard)
+    13: 7,   # stop sign -> traffic sign
  
     # --- ROAD & SIDEWALK ---
     149: 0,  # road -> road
-    191: 1,  # pavement-merged -> sidewalk (spesso usato per i marciapiedi)
+    191: 1,  # pavement-merged -> sidewalk
     
     # --- BUILDING ---
     128: 2,  # house -> building
@@ -36,8 +36,11 @@ coco_to_cityscape = {
     
     # --- TERRAIN ---
     125: 9,  # gravel -> terrain
+    154: 9,  # sand -> terrain
+    158: 9,  # snow -> terrain
+    192: 9,  # mountain-merged -> terrain
     194: 9,  # dirt-merged -> terrain
-    
+    198: 9,  # rock-merged -> terrain
     # --- SKY ---
     187: 10  # sky-other-merged -> sky
 

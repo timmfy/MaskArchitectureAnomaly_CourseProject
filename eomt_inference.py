@@ -249,3 +249,24 @@ def evaluate_semantic(model, dataloader, device, img_size, num_classes=19, ignor
     
     mIoU, ious = evaluator.getIoU()
     return mIoU, ious
+
+if __name__ == "__main__":
+    preds = np.array([[0, 2, 100, 116], [119, 123, 129, 133]])
+    mapped_preds = map_coco_preds_to_cityscapes(preds)
+    gt = np.array([[11, 11, 0, 8], [4, 4, 4, 4]])
+    print("Raw COCO Preds:\n", preds)
+    print("Mapped Cityscapes Train IDs:\n", mapped_preds)
+    print("Ground Truth Cityscapes Train IDs:\n", gt)
+    evaluator = iouEval(20, ignoreIndex=19)
+    # Map gt to evaluation format (255 -> 19)
+    gt_eval = gt.copy()
+    gt_eval[gt_eval == 255] = 19
+    # Map mapped_preds to evaluation format (255 -> 19)
+    mapped_preds_eval = mapped_preds.copy()
+    mapped_preds_eval[mapped_preds_eval == 255] = 19
+    evaluator.addBatch(torch.from_numpy(mapped_preds_eval).unsqueeze(0).unsqueeze(0).long(), 
+                       torch.from_numpy(gt_eval).unsqueeze(0).unsqueeze(0).long())
+    mIoU, ious = evaluator.getIoU()
+    for i, iou in enumerate(ious):
+        print(f"Class {i} IoU: {iou:.4f}")
+    print("mIoU:", mIoU)
