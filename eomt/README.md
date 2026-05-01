@@ -20,7 +20,7 @@ python3 -m pip install -r requirements.txt
 ```
 
 [Weights & Biases](https://wandb.ai/) (wandb) is used for experiment logging and visualization. To enable wandb, log in to your account:
-
+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
 ```bash
 wandb login
 ```
@@ -33,7 +33,7 @@ The code will read the `.zip` files directly.
 
 **Cityscapes**
 ```bash
-wget --keep-session-cookies --save-cookies=cookies.txt --post-data 'username=<your_username>&password=<your_password>&submit=Login' https://www.cityscapes-dataset.com/login/
+wget --keep-session-cookies --save-cookies=cookies.txt --post-data 'username=s349865@studenti.polito.it&password=3Ic3-City#?&submit=Login' https://www.cityscapes-dataset.com/login/
 wget --load-cookies cookies.txt --content-disposition https://www.cityscapes-dataset.com/file-handling/?packageID=1
 wget --load-cookies cookies.txt --content-disposition https://www.cityscapes-dataset.com/file-handling/?packageID=3
 ```
@@ -44,7 +44,7 @@ wget --load-cookies cookies.txt --content-disposition https://www.cityscapes-dat
 
 ### Training
 
-To train EoMT from scratch (don't do it, it will be impossible to do it in Colab due to resource contraints):
+To train EoMT from scratch (don't do it, it will be impossible to do it in Colab due to resource contraints)
 
 ```bash
 python3 main.py fit \
