@@ -59,6 +59,7 @@ class LightningModule(lightning.LightningModule):
         ckpt_path=None,
         delta_weights=False,
         load_ckpt_class_head=True,
+        backbone_freeze_epochs: int = 0,
     ):
         super().__init__()
 
@@ -75,6 +76,8 @@ class LightningModule(lightning.LightningModule):
         self.poly_power = poly_power
         self.warmup_steps = warmup_steps
         self.llrd_l2_enabled = llrd_l2_enabled
+        self.backbone_freeze_epochs = backbone_freeze_epochs
+        self._backbone_frozen = False
 
         self.strict_loading = False
 
@@ -98,6 +101,29 @@ class LightningModule(lightning.LightningModule):
             self._raise_on_incompatible(incompatible_keys, load_ckpt_class_head)
 
         self.log = torch.compiler.disable(self.log)  # type: ignore
+
+    def _freeze_backbone(self):
+        for p in self.network.encoder.backbone.parameters():
+            p.requires_grad = False
+        self._backbone_frozen = True
+        logging.info("Backbone frozen for first %d epochs", self.backbone_freeze_epochs)
+
+    def _unfreeze_backbone(self):
+        for p in self.network.encoder.backbone.parameters():
+            p.requires_grad = True
+        self._backbone_frozen = False
+        logging.info("Backbone unfrozen at epoch %d", self.current_epoch)
+
+    def on_train_start(self) -> None:
+        if self.backbone_freeze_epochs > 0 and self.current_epoch < self.backbone_freeze_epochs:
+            self._freeze_backbone()
+
+    def on_train_epoch_start(self) -> None:
+        if self.backbone_freeze_epochs > 0:
+            if self.current_epoch < self.backbone_freeze_epochs and not self._backbone_frozen:
+                self._freeze_backbone()
+            elif self.current_epoch == self.backbone_freeze_epochs and self._backbone_frozen:
+                self._unfreeze_backbone()
 
     def configure_optimizers(self):
         encoder_param_names = {

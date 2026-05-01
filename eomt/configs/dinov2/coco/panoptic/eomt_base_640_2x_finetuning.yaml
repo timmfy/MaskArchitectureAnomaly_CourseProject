@@ -1,5 +1,5 @@
 trainer:
-  max_epochs: 24
+  max_epochs: 50
   logger:
     class_path: lightning.pytorch.loggers.wandb.WandbLogger
     init_args:
@@ -9,13 +9,10 @@ trainer:
 model:
   class_path: training.mask_classification_semantic.MaskClassificationSemantic
   init_args:
-    # learning rate for the head
-    lr: 1e-4
-    # multiply this to learning rate for the backbone
-    llrd: 0.0
     attn_mask_annealing_enabled: True
     attn_mask_annealing_start_steps: [29564, 73910, 118256]
     attn_mask_annealing_end_steps: [59128, 103474, 147820]
+    backbone_freeze_epochs: 10
     network:
       class_path: models.eomt.EoMT
       init_args:
