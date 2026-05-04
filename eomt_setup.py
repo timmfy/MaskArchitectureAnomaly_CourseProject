@@ -98,7 +98,7 @@ def load_model(config, data, device, weights_path=None):
 
     # 4. Load weights
     if weights_path and os.path.exists(weights_path):
-        state_dict = torch.load(weights_path, map_location=device, weights_only=True)
+        state_dict = model._load_ckpt(weights_path, load_ckpt_class_head=True, device=device)
         model.load_state_dict(state_dict, strict=False)
         print(f"Loaded weights from {weights_path}")
     elif weights_path:

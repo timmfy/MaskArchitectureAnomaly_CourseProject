@@ -25,5 +25,5 @@ model:
 data:
   class_path: datasets.cityscapes_semantic.CityscapesSemantic
   init_args:
-    img_size: [640, 640]
+    img_size: [1024, 1024]
     num_classes: 19

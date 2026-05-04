@@ -905,10 +905,37 @@ class LightningModule(lightning.LightningModule):
 
         return summed
 
-    def _load_ckpt(self, ckpt_path, load_ckpt_class_head):
-        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=True)
+    def _load_ckpt(self, ckpt_path, load_ckpt_class_head, device="cpu"):
+        print(f"Loading checkpoint from {ckpt_path} with weights_only=True")
+        ckpt = torch.load(ckpt_path, map_location=device, weights_only=True)
         if "state_dict" in ckpt:
             ckpt = ckpt["state_dict"]
+        # Interpolate the positional embeddings if they don't match the expected size
+        model_state = self.state_dict()
+        for k, v in ckpt.items():
+                if k in model_state and v.shape != model_state[k].shape:
+                    if "network.encoder.backbone.pos_embed" in k:
+                        logging.info(
+                            f"Interpolating positional embedding for {k} from {v.shape} to {model_state[k].shape}"
+                        )
+                        checkpoint_grid = int(math.sqrt(v.shape[1]))
+                        new_pos_tokens = model_state[k]
+                        model_grid = int(math.sqrt(new_pos_tokens.shape[1]))
+                    
+                        if checkpoint_grid != model_grid:
+                            # Reshape to [Batch, Channel, H, W] for interpolation
+                            reshaped_v = v.reshape(1, checkpoint_grid, checkpoint_grid, -1).permute(0, 3, 1, 2)
+                            interpolated_v = torch.nn.functional.interpolate(
+                                reshaped_v, 
+                                size=(model_grid, model_grid), 
+                                mode='bicubic', 
+                                align_corners=False
+                            )
+                            # Flatten back and add class token back
+                            final_v = interpolated_v.permute(0, 2, 3, 1).reshape(1, -1, v.shape[-1])
+                            ckpt[k] = final_v
+
+
         ckpt = {k: v for k, v in ckpt.items() if "criterion.empty_weight" not in k}
         if not load_ckpt_class_head:
             ckpt = {
