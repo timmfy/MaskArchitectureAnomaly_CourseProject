@@ -13,6 +13,8 @@ from ood_metrics import fpr_at_95_tpr, calc_metrics, plot_roc, plot_pr,plot_barc
 from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 
+import torch.nn.functional as F
+
 seed = 42
 
 # general reproducibility
@@ -59,7 +61,11 @@ def main():
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
     args = parser.parse_args()
-    anomaly_score_list = []
+
+    anomaly_score_MSP_list = []
+    anomaly_score_MaxLogit_list = []
+    anomaly_score_MaxEntropy_list = []
+
     ood_gts_list = []
 
     if not os.path.exists('results.txt'):
@@ -100,7 +106,26 @@ def main():
         images = images.permute(0,3,1,2)
         with torch.no_grad():
             result = model(images)
-        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)            
+
+        # Calcolo degli Score per ERFnet
+
+        # Calcolo Score intermedi : Logits e Probabilities
+
+        logits = result.squeeze(0).data.cpu().numpy()
+        probabilities = F.softmax(result, dim =1)
+        probabilities = probabilities.squeeze(0).data.cpu().numpy()
+
+    
+        #Calcolo Score finali: MSP, MaxLogit, MaxEntropy
+
+        epsilon = 1e-7
+
+        anomaly_score_MSP = 1.0 - np.max(probabilities, axis = 0)
+        anomaly_score_MaxLogit = 1.0 - np.max(logits, axis = 0)
+        anomaly_score_MaxEntropy = np.sum(probabilities * np.log(probabilities+epsilon), axis = 0)
+
+
+
         pathGT = path.replace("images", "labels_masks")                
         if "RoadObsticle21" in pathGT:
            pathGT = pathGT.replace("webp", "png")
@@ -129,34 +154,45 @@ def main():
             continue              
         else:
              ood_gts_list.append(ood_gts)
-             anomaly_score_list.append(anomaly_result)
-        del result, anomaly_result, ood_gts, mask
+             anomaly_score_MSP_list.append(anomaly_score_MSP)
+             anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
+             anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
+
+        del result, anomaly_score_MaxEntropy, anomaly_score_MaxLogit, anomaly_score_MSP, ood_gts, mask
+
         torch.cuda.empty_cache()
 
     file.write( "\n")
 
-    ood_gts = np.array(ood_gts_list)
-    anomaly_scores = np.array(anomaly_score_list)
+    anomaly_scores = {
+        "MSP": np.array(anomaly_score_MSP_list),
+        "MaxLogit": np.array(anomaly_score_MaxLogit_list),
+        "MaxEntropy": np.array(anomaly_score_MaxEntropy_list)
+    }
 
+    ood_gts = np.array(ood_gts_list)
     ood_mask = (ood_gts == 1)
     ind_mask = (ood_gts == 0)
 
-    ood_out = anomaly_scores[ood_mask]
-    ind_out = anomaly_scores[ind_mask]
+    for method_name, anomaly_score in anomaly_scores.items():
 
-    ood_label = np.ones(len(ood_out))
-    ind_label = np.zeros(len(ind_out))
-    
-    val_out = np.concatenate((ind_out, ood_out))
-    val_label = np.concatenate((ind_label, ood_label))
+        ood_out = anomaly_score[ood_mask]
+        ind_out = anomaly_score[ind_mask]
 
-    prc_auc = average_precision_score(val_label, val_out)
-    fpr = fpr_at_95_tpr(val_out, val_label)
+        ood_label = np.ones(len(ood_out))
+        ind_label = np.zeros(len(ind_out))
+        
+        val_out = np.concatenate((ind_out, ood_out))
+        val_label = np.concatenate((ind_label, ood_label))
 
-    print(f'AUPRC score: {prc_auc*100.0}')
-    print(f'FPR@TPR95: {fpr*100.0}')
+        prc_auc = average_precision_score(val_label, val_out)
+        fpr = fpr_at_95_tpr(val_out, val_label)
 
-    file.write(('    AUPRC score:' + str(prc_auc*100.0) + '   FPR@TPR95:' + str(fpr*100.0) ))
+        print(f'AUPRC score: {prc_auc*100.0}')
+        print(f'FPR@TPR95: {fpr*100.0}')
+
+        file.write(('    AUPRC score:' + str(prc_auc*100.0) + '   FPR@TPR95:' + str(fpr*100.0) ))
+
     file.close()
 
 if __name__ == '__main__':
