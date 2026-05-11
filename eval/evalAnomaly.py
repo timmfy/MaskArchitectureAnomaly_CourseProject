@@ -14,6 +14,48 @@ from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curv
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
+
+def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_salvataggio, nome_metrica="Score"):
+    """
+    Salva un'immagine con l'originale, la heatmap e la ground truth a colori.
+    """
+    fig, assi = plt.subplots(1, 3, figsize=(18, 5))
+    
+    # --- 1. IMMAGINE ORIGINALE ---
+    img_np = immagine_tensor.squeeze(0).cpu().permute(1, 2, 0).numpy()
+    if img_np.max() > 1.0:
+        img_np = img_np / 255.0
+    img_np = np.clip(img_np, 0, 1)
+    
+    assi[0].imshow(img_np)
+    assi[0].set_title("Immagine Originale")
+    assi[0].axis('off')
+    
+    # --- 2. PREDIZIONE (HEATMAP) ---
+    mappa = assi[1].imshow(score_anomalia, cmap='jet')
+    assi[1].set_title(f"Predizione ({nome_metrica})")
+    assi[1].axis('off')
+    fig.colorbar(mappa, ax=assi[1], fraction=0.046, pad=0.04)
+    
+    # --- 3. GROUND TRUTH (A COLORI) ---
+    h, w = ground_truth.shape
+    # Creiamo un'immagine vuota a 3 canali (RGB)
+    gt_color = np.zeros((h, w, 3), dtype=np.float32)
+    
+    # Assegniamo i colori in base ai valori
+    gt_color[ground_truth == 0] = [0.2, 0.2, 0.2]   # Strada (Valore 0) -> Grigio scuro
+    gt_color[ground_truth == 1] = [1.0, 0.0, 0.0]   # Anomalia (Valore 1) -> ROSSO
+    gt_color[ground_truth == 255] = [1.0, 1.0, 1.0] # Ignora (Valore 255) -> Bianco
+    
+    assi[2].imshow(gt_color)
+    assi[2].set_title("Ground Truth (Valuation)")
+    assi[2].axis('off')
+    
+    # --- SALVATAGGIO ---
+    plt.tight_layout()
+    plt.savefig(nome_file_salvataggio, bbox_inches='tight')
+    plt.close(fig)
 
 seed = 42
 
@@ -103,7 +145,7 @@ def main():
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
         print(path)
         images = input_transform((Image.open(path).convert('RGB'))).unsqueeze(0).float().cuda()
-        images = images.permute(0,3,1,2)
+        # images = images.permute(0,3,1,2)
         with torch.no_grad():
             result = model(images)
 
@@ -157,6 +199,17 @@ def main():
              anomaly_score_MSP_list.append(anomaly_score_MSP)
              anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
              anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
+
+             nome_base = os.path.basename(path)
+             nome_file_out = f"heatmap_{nome_base}.png"
+             salva_predizione(
+                immagine_tensor=images, 
+                score_anomalia=anomaly_score_MSP, 
+                ground_truth=ood_gts,
+                nome_file_salvataggio=nome_file_out,
+                nome_metrica="MSP"
+        )
+
 
         del result, anomaly_score_MaxEntropy, anomaly_score_MaxLogit, anomaly_score_MSP, ood_gts, mask
 
