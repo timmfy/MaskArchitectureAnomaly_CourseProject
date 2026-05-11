@@ -12,3 +12,4 @@ ipykernel
 fvcore
 torchmetrics
 pycocotools
+ood_metrics
