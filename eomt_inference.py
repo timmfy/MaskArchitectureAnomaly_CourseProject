@@ -270,3 +270,28 @@ if __name__ == "__main__":
     for i, iou in enumerate(ious):
         print(f"Class {i} IoU: {iou:.4f}")
     print("mIoU:", mIoU)
+
+def get_pixel_logits(model, img, device):
+
+    H, W = img.shape[-2:] 
+    
+    model.eval()
+    with torch.no_grad(), autocast(dtype=torch.float16, device_type=device.type if hasattr(device, 'type') else str(device)):
+        imgs_in = [img.to(device)]
+        img_sizes = [(H, W)]
+        
+        crops, origins = model.window_imgs_semantic(imgs_in)
+
+        mask_logits_per_layer, class_logits_per_layer = model(crops)
+        
+        mask_logits = F.interpolate(
+            mask_logits_per_layer[-1], (H, W), mode="bilinear"
+        )
+        
+        crop_logits = model.to_per_pixel_logits_semantic(
+            mask_logits, class_logits_per_layer[-1]
+        )
+        
+        logits = model.revert_window_logits_semantic(crop_logits, origins, img_sizes)
+        
+    return logits[0]
