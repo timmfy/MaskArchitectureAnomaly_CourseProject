@@ -97,6 +97,7 @@ def main():
     )  
     parser.add_argument('--loadDir',default="../trained_models/")
     parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
+    parser.add_argument('--loadDataset', default="RoadObsticle21")
     parser.add_argument('--loadModel', default="erfnet.py")
     parser.add_argument('--subset', default="val")  #can be val or train (must have labels)
     parser.add_argument('--num-workers', type=int, default=4)
@@ -110,9 +111,9 @@ def main():
 
     ood_gts_list = []
 
-    if not os.path.exists('results.txt'):
-        open('results.txt', 'w').close()
-    file = open('results.txt', 'a')
+    if not os.path.exists(f'results_erfnet_{args.loadDataset}.txt'):
+        open(f'results_erfnet_{args.loadDataset}.txt', 'w').close()
+    file = open(f'results_erfnet_{args.loadDataset}.txt', 'a')
 
     modelpath = args.loadDir + args.loadModel
     weightspath = args.loadDir + args.loadWeights

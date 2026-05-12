@@ -98,12 +98,12 @@ class DataInfo:
 def main():
     parser = ArgumentParser()
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    default_input = os.path.abspath(os.path.join(script_dir, "../datasets/Anomaly_Validation_Datasets/Validation_Dataset/RoadObsticle21/images/*.webp"))
+    default_input = os.path.abspath(os.path.join(script_dir, "../datasets/Validation_Dataset/RoadObsticle21/images/*.webp"))
     default_weights = os.path.abspath(os.path.join(script_dir, "../weights/eomt_cityscapes.bin"))
-    default_conf = os.path.abspath(os.path.join(script_dir, "../eomt/configs/dinov2/anomaly/eomt_640_RoadObsticle21.yaml"))
+    default_conf = os.path.abspath(os.path.join(script_dir, "../eomt/configs/dinov2/cityscapes/semantic/eomt_base_640.yaml"))
 
     parser.add_argument("--input", default=default_input, nargs="+")
-    parser.add_argument('--loadDir', default=os.path.abspath(os.path.join(script_dir, "../weights/")))
+    parser.add_argument('--loadDataset', default="RoadObsticle21")
     parser.add_argument('--loadWeights', default=default_weights)
     parser.add_argument('--loadConf', default=default_conf)
     parser.add_argument('--cpu', action='store_true')
@@ -116,9 +116,9 @@ def main():
     anomaly_score_RbA_list = [] # Added RbA
     ood_gts_list = []
 
-    if not os.path.exists('results_eomt.txt'):
-        open('results_eomt.txt', 'w').close()
-    file = open('results_eomt.txt', 'a')
+    if not os.path.exists(f'results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.txt'):
+        open(f'results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.txt', 'w').close()
+    file = open(f'results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.txt', 'a')
 
     # --- MODEL LOADING ---
 
@@ -137,7 +137,8 @@ def main():
 
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
         dataset_name = os.path.basename(os.path.dirname(os.path.dirname(path)))
-        output_dir = os.path.join("images", dataset_name, "erfnet")
+        model_name = weights_path.split("/")[-1].split(".")[0]
+        output_dir = os.path.join("images", dataset_name, model_name)
 
         images = input_transform((Image.open(path).convert('RGB'))).float().to(device)
         logits = eomt_inference.get_pixel_logits(model, images, IMG_SIZE, device)
