@@ -1,6 +1,6 @@
 .venv/
 datasets/
-eomt/weights
+weights/
 .DS_Store
 __pycache__/
 *.log
