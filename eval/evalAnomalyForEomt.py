@@ -21,12 +21,13 @@ from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_salvataggio, nome_metrica="Score"):
+def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_salvataggio, output_dir, nome_metrica="Score"):
     """
     Salva un'immagine con l'originale, la heatmap e la ground truth a colori.
     """
     fig, assi = plt.subplots(1, 3, figsize=(18, 5))
     
+    os.makedirs(output_dir, exist_ok=True)
     # --- 1. IMMAGINE ORIGINALE ---
     img_np = immagine_tensor.squeeze(0).cpu().permute(1, 2, 0).numpy()
     if img_np.max() > 1.0:
@@ -59,7 +60,7 @@ def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_sa
     
     # --- SALVATAGGIO ---
     plt.tight_layout()
-    plt.savefig(nome_file_salvataggio, bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, nome_file_salvataggio), bbox_inches='tight')
     plt.close(fig)
 
 seed = 42
@@ -72,9 +73,10 @@ torch.manual_seed(seed)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
 
+IMG_SIZE = (1024, 1024)
 input_transform = Compose(
     [
-        Resize((640, 640), Image.BILINEAR),
+        Resize(IMG_SIZE, Image.BILINEAR),
         ToTensor(),
         #Normalize([.485, .456, .406], [.229, .224, .225]),
     ]
@@ -82,12 +84,11 @@ input_transform = Compose(
 
 target_transform = Compose(
     [
-        Resize((640, 640), Image.NEAREST),
+        Resize(IMG_SIZE, Image.NEAREST),
     ]
 )
 
 NUM_CLASSES = 19 
-IMG_SIZE = (640, 640)
 
 class DataInfo:
     def __init__(self):
@@ -135,13 +136,16 @@ def main():
         model = model.to(device)
 
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
+        dataset_name = os.path.basename(os.path.dirname(os.path.dirname(path)))
+        output_dir = os.path.join("images", dataset_name, "erfnet")
+
         images = input_transform((Image.open(path).convert('RGB'))).float().to(device)
         logits = eomt_inference.get_pixel_logits(model, images, IMG_SIZE, device)
     
             
         # --- ANOMALY SCORING ---
         # 1. Probabilities
-        probs = F.softmax(logits, dim=1)
+        probs = F.softmax(logits, dim=0)
         
         # Move to CPU for numpy operations
         logits_np = logits.squeeze(0).cpu().numpy()
@@ -192,7 +196,7 @@ def main():
              anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
              anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
              #anomaly_score_RbA_list.append(anomaly_score_RbA)
-             salva_predizione(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", "MSP")
+             salva_predizione(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", output_dir, "MSP")
 
     # --- EVALUATION LOOP ---
     anomaly_scores = {

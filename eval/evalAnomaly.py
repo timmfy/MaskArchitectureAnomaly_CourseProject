@@ -16,11 +16,12 @@ from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_salvataggio, nome_metrica="Score"):
+def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_salvataggio, output_dir, nome_metrica="Score"):
     """
     Salva un'immagine con l'originale, la heatmap e la ground truth a colori.
     """
     fig, assi = plt.subplots(1, 3, figsize=(18, 5))
+    os.makedirs(output_dir, exist_ok=True)
     
     # --- 1. IMMAGINE ORIGINALE ---
     img_np = immagine_tensor.squeeze(0).cpu().permute(1, 2, 0).numpy()
@@ -54,7 +55,7 @@ def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_sa
     
     # --- SALVATAGGIO ---
     plt.tight_layout()
-    plt.savefig(nome_file_salvataggio, bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, nome_file_salvataggio), bbox_inches='tight')
     plt.close(fig)
 
 seed = 42
@@ -144,6 +145,9 @@ def main():
     
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
         print(path)
+        dataset_name = os.path.basename(os.path.dirname(os.path.dirname(path)))
+        output_dir = os.path.join("images", dataset_name, "erfnet")
+
         images = input_transform((Image.open(path).convert('RGB'))).unsqueeze(0).float().to(device)
         # images = images.permute(0,3,1,2)
         with torch.no_grad():
@@ -207,6 +211,7 @@ def main():
                 score_anomalia=anomaly_score_MSP, 
                 ground_truth=ood_gts,
                 nome_file_salvataggio=nome_file_out,
+                     output_dir=output_dir,
                 nome_metrica="MSP"
         )
 
