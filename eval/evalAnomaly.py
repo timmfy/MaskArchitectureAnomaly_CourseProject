@@ -98,7 +98,6 @@ def main():
     parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
     parser.add_argument('--loadModel', default="erfnet.py")
     parser.add_argument('--subset', default="val")  #can be val or train (must have labels)
-    parser.add_argument('--datadir', default="/home/shyam/ViT-Adapter/segmentation/data/cityscapes/")
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
@@ -121,9 +120,10 @@ def main():
     print ("Loading weights: " + weightspath)
 
     model = ERFNet(NUM_CLASSES)
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
 
     if (not args.cpu):
-        model = torch.nn.DataParallel(model).cuda()
+        model = torch.nn.DataParallel(model).to(device)
 
     def load_my_state_dict(model, state_dict):  #custom function to load model when not all dict elements
         own_state = model.state_dict()
@@ -144,7 +144,7 @@ def main():
     
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
         print(path)
-        images = input_transform((Image.open(path).convert('RGB'))).unsqueeze(0).float().cuda()
+        images = input_transform((Image.open(path).convert('RGB'))).unsqueeze(0).float().to(device)
         # images = images.permute(0,3,1,2)
         with torch.no_grad():
             result = model(images)
@@ -164,7 +164,7 @@ def main():
 
         anomaly_score_MSP = 1.0 - np.max(probabilities, axis = 0)
         anomaly_score_MaxLogit = 1.0 - np.max(logits, axis = 0)
-        anomaly_score_MaxEntropy = np.sum(probabilities * np.log(probabilities+epsilon), axis = 0)
+        anomaly_score_MaxEntropy = np.sum(-probabilities * np.log(probabilities+epsilon), axis = 0)
 
 
 
@@ -212,8 +212,6 @@ def main():
 
 
         del result, anomaly_score_MaxEntropy, anomaly_score_MaxLogit, anomaly_score_MSP, ood_gts, mask
-
-        torch.cuda.empty_cache()
 
     file.write( "\n")
 

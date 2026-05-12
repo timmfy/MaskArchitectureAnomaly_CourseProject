@@ -640,7 +640,11 @@ class LightningModule(lightning.LightningModule):
         for i in range(len(imgs)):
             img = imgs[i]
             new_h, new_w = self.scale_img_size_semantic(img.shape[-2:])
-            pil_img = Image.fromarray(img.permute(1, 2, 0).cpu().numpy())
+            img_np = img.permute(1, 2, 0).cpu().numpy()
+            # Convert float32 to uint8 for PIL
+            if img_np.dtype == np.float32 or img_np.dtype == np.float64:
+                img_np = (img_np * 255).astype(np.uint8) if img_np.max() <= 1.0 else img_np.astype(np.uint8)
+            pil_img = Image.fromarray(img_np)
             resized_img = pil_img.resize((new_w, new_h), Image.BILINEAR)
             resized_img = (
                 torch.from_numpy(np.array(resized_img)).permute(2, 0, 1).to(img.device)
@@ -738,7 +742,11 @@ class LightningModule(lightning.LightningModule):
         for img in imgs:
             new_h, new_w = self.scale_img_size_instance_panoptic(img.shape[-2:])
 
-            pil_img = Image.fromarray(img.permute(1, 2, 0).cpu().numpy())
+            img_np = img.permute(1, 2, 0).cpu().numpy()
+            # Convert float32 to uint8 for PIL
+            if img_np.dtype == np.float32 or img_np.dtype == np.float64:
+                img_np = (img_np * 255).astype(np.uint8) if img_np.max() <= 1.0 else img_np.astype(np.uint8)
+            pil_img = Image.fromarray(img_np)
             pil_img = pil_img.resize((new_w, new_h), Image.BILINEAR)
             resized_img = (
                 torch.from_numpy(np.array(pil_img)).permute(2, 0, 1).to(img.device)

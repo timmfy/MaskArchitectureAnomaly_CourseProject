@@ -250,6 +250,29 @@ def evaluate_semantic(model, dataloader, device, img_size, num_classes=19, ignor
     mIoU, ious = evaluator.getIoU()
     return mIoU, ious
 
+def get_pixel_logits(model, img, img_size, device):
+
+    model.eval()
+    with torch.no_grad(), autocast(dtype=torch.float16, device_type=device.type if hasattr(device, 'type') else str(device)):
+        imgs_in = [img.to(device)]
+        img_sizes = [img.shape[-2:] for img in imgs_in]
+        
+        crops, origins = model.window_imgs_semantic(imgs_in)
+
+        mask_logits_per_layer, class_logits_per_layer = model(crops)
+        
+        mask_logits = F.interpolate(
+            mask_logits_per_layer[-1], img_size, mode="bilinear"
+        )
+        
+        crop_logits = model.to_per_pixel_logits_semantic(
+            mask_logits, class_logits_per_layer[-1]
+        )
+        
+        logits = model.revert_window_logits_semantic(crop_logits, origins, img_sizes)
+        
+    return logits[0]
+
 if __name__ == "__main__":
     preds = np.array([[0, 2, 100, 116], [119, 123, 129, 133]])
     mapped_preds = map_coco_preds_to_cityscapes(preds)
@@ -270,28 +293,3 @@ if __name__ == "__main__":
     for i, iou in enumerate(ious):
         print(f"Class {i} IoU: {iou:.4f}")
     print("mIoU:", mIoU)
-
-def get_pixel_logits(model, img, device):
-
-    H, W = img.shape[-2:] 
-    
-    model.eval()
-    with torch.no_grad(), autocast(dtype=torch.float16, device_type=device.type if hasattr(device, 'type') else str(device)):
-        imgs_in = [img.to(device)]
-        img_sizes = [(H, W)]
-        
-        crops, origins = model.window_imgs_semantic(imgs_in)
-
-        mask_logits_per_layer, class_logits_per_layer = model(crops)
-        
-        mask_logits = F.interpolate(
-            mask_logits_per_layer[-1], (H, W), mode="bilinear"
-        )
-        
-        crop_logits = model.to_per_pixel_logits_semantic(
-            mask_logits, class_logits_per_layer[-1]
-        )
-        
-        logits = model.revert_window_logits_semantic(crop_logits, origins, img_sizes)
-        
-    return logits[0]

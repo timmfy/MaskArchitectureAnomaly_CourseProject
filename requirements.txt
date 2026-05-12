@@ -13,3 +13,4 @@ fvcore
 torchmetrics
 pycocotools
 ood_metrics
+opencv-python

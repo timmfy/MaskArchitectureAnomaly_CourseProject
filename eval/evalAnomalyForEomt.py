@@ -115,9 +115,9 @@ def main():
     anomaly_score_RbA_list = [] # Added RbA
     ood_gts_list = []
 
-    if not os.path.exists('results.txt'):
-        open('results.txt', 'w').close()
-    file = open('results.txt', 'a')
+    if not os.path.exists('results_eomt.txt'):
+        open('results_eomt.txt', 'w').close()
+    file = open('results_eomt.txt', 'a')
 
     # --- MODEL LOADING ---
 
@@ -129,19 +129,14 @@ def main():
     conf = eomt_setup.load_config(config_path)
     data_info = DataInfo()
     model = eomt_setup.load_model(conf, data_info, torch.device("cpu"),weights_path = weights_path)
-
-
-
-    print(f"Loading EoMT model from {args.loadWeights}")
     
 
     if not args.cpu:
-        model = model.cuda()
+        model = model.to(device)
 
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
-        images = input_transform((Image.open(path).convert('RGB'))).unsqueeze(0).float().cuda()
-        
-        logits = eomt_inference.get_pixel_logits(model, images, device)
+        images = input_transform((Image.open(path).convert('RGB'))).float().to(device)
+        logits = eomt_inference.get_pixel_logits(model, images, IMG_SIZE, device)
     
             
         # --- ANOMALY SCORING ---
@@ -158,10 +153,10 @@ def main():
         anomaly_score_MSP = 1.0 - np.max(probs_np, axis=0)
         
         # Max Logit
-        anomaly_score_MaxLogit = -(np.max(logits_np, axis=0))
+        anomaly_score_MaxLogit = 1.0 -(np.max(logits_np, axis=0))
         
         # Max Entropy
-        anomaly_score_MaxEntropy = -np.sum(probs_np * np.log(probs_np + epsilon), axis=0)
+        anomaly_score_MaxEntropy =np.sum(-probs_np * np.log(probs_np + epsilon), axis=0)
 
         # RbA to implement see the repo in git
 
@@ -196,9 +191,7 @@ def main():
              anomaly_score_MSP_list.append(anomaly_score_MSP)
              anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
              anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
-             anomaly_score_RbA_list.append(anomaly_score_RbA)
-
-             # Visualizing MSP as sample
+             #anomaly_score_RbA_list.append(anomaly_score_RbA)
              salva_predizione(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", "MSP")
 
     # --- EVALUATION LOOP ---
@@ -206,7 +199,7 @@ def main():
         "MSP": np.array(anomaly_score_MSP_list),
         "MaxLogit": np.array(anomaly_score_MaxLogit_list),
         "MaxEntropy": np.array(anomaly_score_MaxEntropy_list),
-        "RbA": np.array(anomaly_score_RbA_list)
+        #"RbA": np.array(anomaly_score_RbA_list)
     }
 
     ood_gts = np.array(ood_gts_list)
