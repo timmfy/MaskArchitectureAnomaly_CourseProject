@@ -7,3 +7,5 @@ __pycache__/
 wandb/
 .vscode/
 images/
+results_anomaly/
+eomt/weights/

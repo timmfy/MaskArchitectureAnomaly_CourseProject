@@ -99,7 +99,7 @@ def main():
     parser = ArgumentParser()
     script_dir = os.path.dirname(os.path.abspath(__file__))
     default_input = os.path.abspath(os.path.join(script_dir, "../datasets/Validation_Dataset/RoadObsticle21/images/*.webp"))
-    default_weights = os.path.abspath(os.path.join(script_dir, "../weights/eomt_cityscapes.bin"))
+    default_weights = os.path.abspath(os.path.join(script_dir, "../eomt/weights/eomt_cityscapes.bin"))
     default_conf = os.path.abspath(os.path.join(script_dir, "../eomt/configs/dinov2/cityscapes/semantic/eomt_base_640.yaml"))
 
     parser.add_argument("--input", default=default_input, nargs="+")
@@ -116,9 +116,10 @@ def main():
     anomaly_score_RbA_list = [] # Added RbA
     ood_gts_list = []
 
-    if not os.path.exists(f'results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.txt'):
-        open(f'results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.txt', 'w').close()
-    file = open(f'results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.txt', 'a')
+    os.makedirs("results_anomaly", exist_ok=True)
+    if not os.path.exists(f'results_anomaly/results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.csv'):
+        open(f'results_anomaly/results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.csv', 'w').close()
+    file = open(f'results_anomaly/results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.csv', 'a')
 
     # --- MODEL LOADING ---
 
@@ -211,6 +212,7 @@ def main():
     ood_mask = (ood_gts == 1)
     ind_mask = (ood_gts == 0)
 
+    file.write(f"Model,Dataset,Method,AUPRC,FPR@TPR95\n")
     for method_name, scores in anomaly_scores.items():
         ood_out = scores[ood_mask]
         ind_out = scores[ind_mask]
@@ -221,9 +223,9 @@ def main():
         prc_auc = average_precision_score(val_label, val_out)
         fpr = fpr_at_95_tpr(val_out, val_label)
 
-        result_str = f"Method: {method_name} | AUPRC: {prc_auc*100.0:.2f} | FPR95: {fpr*100.0:.2f}\n"
-        print(result_str)
-        file.write(result_str)
+        model_name = args.loadWeights.split("/")[-1].split(".")[0]
+        file.write(file.write(f"{model_name},{dataset_name},{method_name},{prc_auc*100.0:.2f},{fpr*100.0:.2f}"))
+        file.write("\n")
 
     file.close()
 

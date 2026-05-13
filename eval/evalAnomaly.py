@@ -111,9 +111,10 @@ def main():
 
     ood_gts_list = []
 
-    if not os.path.exists(f'results_erfnet_{args.loadDataset}.txt'):
-        open(f'results_erfnet_{args.loadDataset}.txt', 'w').close()
-    file = open(f'results_erfnet_{args.loadDataset}.txt', 'a')
+    os.makedirs("results_anomaly", exist_ok=True)
+    if not os.path.exists(f'results_anomaly/results_erfnet_{args.loadDataset}.csv'):
+        open(f'results_anomaly/results_erfnet_{args.loadDataset}.csv', 'w').close()
+    file = open(f'results_anomaly/results_erfnet_{args.loadDataset}.csv', 'a')
 
     modelpath = args.loadDir + args.loadModel
     weightspath = args.loadDir + args.loadWeights
@@ -145,7 +146,6 @@ def main():
     model.eval()
     
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
-        print(path)
         dataset_name = os.path.basename(os.path.dirname(os.path.dirname(path)))
         output_dir = os.path.join("images", dataset_name, "erfnet")
 
@@ -219,8 +219,6 @@ def main():
 
         del result, anomaly_score_MaxEntropy, anomaly_score_MaxLogit, anomaly_score_MSP, ood_gts, mask
 
-    file.write( "\n")
-
     anomaly_scores = {
         "MSP": np.array(anomaly_score_MSP_list),
         "MaxLogit": np.array(anomaly_score_MaxLogit_list),
@@ -231,6 +229,7 @@ def main():
     ood_mask = (ood_gts == 1)
     ind_mask = (ood_gts == 0)
 
+    file.write(f"Model,Dataset,Method,AUPRC,FPR@TPR95\n")
     for method_name, anomaly_score in anomaly_scores.items():
 
         ood_out = anomaly_score[ood_mask]
@@ -248,7 +247,8 @@ def main():
         print(f'AUPRC score: {prc_auc*100.0}')
         print(f'FPR@TPR95: {fpr*100.0}')
 
-        file.write(('    AUPRC score:' + str(prc_auc*100.0) + '   FPR@TPR95:' + str(fpr*100.0) ))
+        file.write(f"ERFNET,{dataset_name},{method_name},{prc_auc*100.0:.2f},{fpr*100.0:.2f}")
+        file.write( "\n")
 
     file.close()
 
