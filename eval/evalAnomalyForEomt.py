@@ -143,8 +143,7 @@ def main():
 
         images = input_transform((Image.open(path).convert('RGB'))).float().to(device)
         logits = eomt_inference.get_pixel_logits(model, images, IMG_SIZE, device)
-    
-            
+
         # --- ANOMALY SCORING ---
         # 1. Probabilities
         probs = F.softmax(logits, dim=0)
@@ -164,8 +163,11 @@ def main():
         # Max Entropy
         anomaly_score_MaxEntropy =np.sum(-probs_np * np.log(probs_np + epsilon), axis=0)
 
-        # RbA to implement see the repo in git
-
+        # RbA
+        scores = torch.clamp(logits, epsilon, 1.0 - epsilon)
+        scores = torch.log(scores / (1.0 - scores))
+        anomaly_score_RbA = -torch.tanh(scores).sum(dim=0).cpu().numpy()
+        
         pathGT = path.replace("images", "labels_masks")                
         if "RoadObsticle21" in pathGT:
            pathGT = pathGT.replace("webp", "png")
@@ -197,7 +199,7 @@ def main():
              anomaly_score_MSP_list.append(anomaly_score_MSP)
              anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
              anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
-             #anomaly_score_RbA_list.append(anomaly_score_RbA)
+             anomaly_score_RbA_list.append(anomaly_score_RbA)
              salva_predizione(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", output_dir, "MSP")
 
     # --- EVALUATION LOOP ---
@@ -205,7 +207,7 @@ def main():
         "MSP": np.array(anomaly_score_MSP_list),
         "MaxLogit": np.array(anomaly_score_MaxLogit_list),
         "MaxEntropy": np.array(anomaly_score_MaxEntropy_list),
-        #"RbA": np.array(anomaly_score_RbA_list)
+        "RbA": np.array(anomaly_score_RbA_list)
     }
 
     ood_gts = np.array(ood_gts_list)
@@ -224,7 +226,7 @@ def main():
         fpr = fpr_at_95_tpr(val_out, val_label)
 
         model_name = args.loadWeights.split("/")[-1].split(".")[0]
-        file.write(file.write(f"{model_name},{dataset_name},{method_name},{prc_auc*100.0:.2f},{fpr*100.0:.2f}"))
+        file.write(f"{model_name},{dataset_name},{method_name},{prc_auc*100.0:.2f},{fpr*100.0:.2f}")
         file.write("\n")
 
     file.close()
