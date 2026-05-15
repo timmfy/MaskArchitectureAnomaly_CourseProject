@@ -144,11 +144,8 @@ def main():
         images = input_transform((Image.open(path).convert('RGB'))).float().to(device)
         logits = eomt_inference.get_pixel_logits(model, images, IMG_SIZE, device)
 
-        # --- ANOMALY SCORING ---
-        # 1. Probabilities
         probs = F.softmax(logits, dim=0)
         
-        # Move to CPU for numpy operations
         logits_np = logits.squeeze(0).cpu().numpy()
         probs_np = probs.squeeze(0).cpu().numpy()
 
@@ -164,9 +161,7 @@ def main():
         anomaly_score_MaxEntropy =np.sum(-probs_np * np.log(probs_np + epsilon), axis=0)
 
         # RbA
-        scores = torch.clamp(logits, epsilon, 1.0 - epsilon)
-        scores = torch.log(scores / (1.0 - scores))
-        anomaly_score_RbA = -torch.tanh(scores).sum(dim=0).cpu().numpy()
+        anomaly_score_RbA = -torch.tanh(logits).sum(dim=0).cpu().numpy()
         
         pathGT = path.replace("images", "labels_masks")                
         if "RoadObsticle21" in pathGT:
@@ -202,7 +197,6 @@ def main():
              anomaly_score_RbA_list.append(anomaly_score_RbA)
              salva_predizione(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", output_dir, "MSP")
 
-    # --- EVALUATION LOOP ---
     anomaly_scores = {
         "MSP": np.array(anomaly_score_MSP_list),
         "MaxLogit": np.array(anomaly_score_MaxLogit_list),
