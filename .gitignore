@@ -9,3 +9,4 @@ wandb/
 images/
 results_anomaly/
 eomt/weights/
+logits/

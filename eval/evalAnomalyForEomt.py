@@ -140,9 +140,14 @@ def main():
         dataset_name = os.path.basename(os.path.dirname(os.path.dirname(path)))
         model_name = weights_path.split("/")[-1].split(".")[0]
         output_dir = os.path.join("images", dataset_name, model_name)
+        save_logit = os.path.join("logits", dataset_name, model_name)
+        os.makedirs(save_logit, exist_ok=True)
+
+
 
         images = input_transform((Image.open(path).convert('RGB'))).float().to(device)
         logits = eomt_inference.get_pixel_logits(model, images, IMG_SIZE, device)
+        torch.save(logits.cpu(), os.path.join(save_logit, f"logits_{os.path.basename(path).split('.')[0]}.pt"))
 
         probs = F.softmax(logits, dim=0)
         
