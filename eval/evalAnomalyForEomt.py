@@ -21,6 +21,8 @@ from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
+from pathGTComparison import maskGt
+
 def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_salvataggio, output_dir, nome_metrica="Score"):
     """
     Salva un'immagine con l'originale, la heatmap e la ground truth a colori.
@@ -28,7 +30,6 @@ def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_sa
     fig, assi = plt.subplots(1, 3, figsize=(18, 5))
     
     os.makedirs(output_dir, exist_ok=True)
-    # --- 1. IMMAGINE ORIGINALE ---
     img_np = immagine_tensor.squeeze(0).cpu().permute(1, 2, 0).numpy()
     if img_np.max() > 1.0:
         img_np = img_np / 255.0
@@ -38,18 +39,14 @@ def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_sa
     assi[0].set_title("Immagine Originale")
     assi[0].axis('off')
     
-    # --- 2. PREDIZIONE (HEATMAP) ---
     mappa = assi[1].imshow(score_anomalia, cmap='jet')
     assi[1].set_title(f"Predizione ({nome_metrica})")
     assi[1].axis('off')
     fig.colorbar(mappa, ax=assi[1], fraction=0.046, pad=0.04)
     
-    # --- 3. GROUND TRUTH (A COLORI) ---
     h, w = ground_truth.shape
-    # Creiamo un'immagine vuota a 3 canali (RGB)
     gt_color = np.zeros((h, w, 3), dtype=np.float32)
     
-    # Assegniamo i colori in base ai valori
     gt_color[ground_truth == 0] = [0.2, 0.2, 0.2]   # Strada (Valore 0) -> Grigio scuro
     gt_color[ground_truth == 1] = [1.0, 0.0, 0.0]   # Anomalia (Valore 1) -> ROSSO
     gt_color[ground_truth == 255] = [1.0, 1.0, 1.0] # Ignora (Valore 255) -> Bianco
@@ -58,7 +55,6 @@ def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_sa
     assi[2].set_title("Ground Truth (Valuation)")
     assi[2].axis('off')
     
-    # --- SALVATAGGIO ---
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, nome_file_salvataggio), bbox_inches='tight')
     plt.close(fig)
@@ -176,23 +172,9 @@ def main():
         if "RoadAnomaly" in pathGT:
            pathGT = pathGT.replace("jpg", "png")  
 
-        mask = Image.open(pathGT)
-        mask = target_transform(mask)
-        ood_gts = np.array(mask)
+        ood_gts = maskGt(pathGT, target_transform)
 
-        if "RoadAnomaly" in pathGT:
-            ood_gts = np.where((ood_gts==2), 1, ood_gts)
-        if "LostAndFound" in pathGT:
-            ood_gts = np.where((ood_gts==0), 255, ood_gts)
-            ood_gts = np.where((ood_gts==1), 0, ood_gts)
-            ood_gts = np.where((ood_gts>1)&(ood_gts<201), 1, ood_gts)
-
-        if "Streethazard" in pathGT:
-            ood_gts = np.where((ood_gts==14), 255, ood_gts)
-            ood_gts = np.where((ood_gts<20), 0, ood_gts)
-            ood_gts = np.where((ood_gts==255), 1, ood_gts)
-
-        if 1 not in np.unique(ood_gts):
+        if ood_gts is None:
             continue              
         else:
              ood_gts_list.append(ood_gts)
