@@ -24,4 +24,4 @@ def maskGt(pathGT, target_transform):
 
     if 1 not in np.unique(ood_gts):
         return None
-    return ood_gts              
+    return ood_gts, mask

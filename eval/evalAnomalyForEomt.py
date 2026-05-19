@@ -172,7 +172,7 @@ def main():
         if "RoadAnomaly" in pathGT:
            pathGT = pathGT.replace("jpg", "png")  
 
-        ood_gts = maskGt(pathGT, target_transform)
+        ood_gts, mask = maskGt(pathGT, target_transform)
 
         if ood_gts is None:
             continue              
