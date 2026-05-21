@@ -129,17 +129,6 @@ python eval_iou.py --loadDir ../trained_models/ --loadWeights erfnet_pretrained.
   --datadir ../datasets/cityscapes/
 ```
 
-### EoMT fine-tuning
-
-```bash
-python eomt/main.py fit \
-  -c eomt/configs/dinov2/coco/panoptic/eomt_base_640_2x_finetuning.yaml \
-  --trainer.devices 1 \
-  --data.path datasets/cityscapes \
-  --model.init_args.ckpt_path eomt/weights/eomt_coco.bin \
-  --model.init_args.load_ckpt_class_head false
-```
-
 ---
 
 ## Models
