@@ -37,7 +37,7 @@ target_transform_cityscapes = Compose([
 ])
 
 def evaluate_erfnet(
-    loadDir="../trained_models/",
+    loadDir="../weights/",
     loadWeights="erfnet_pretrained.pth",
     loadModel="erfnet.py",
     subset="val",  # can be val or train (must have labels)
@@ -57,7 +57,8 @@ def evaluate_erfnet(
     model = ERFNet(NUM_CLASSES)
 
     if not cpu:
-        model = torch.nn.DataParallel(model).cuda()
+        device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
+        model = torch.nn.DataParallel(model).to(device)
 
     def load_my_state_dict(model, state_dict):  # custom function to load model when not all dict elements
         own_state = model.state_dict()
@@ -93,8 +94,8 @@ def evaluate_erfnet(
 
     for step, (images, labels, filename, filenameGt) in enumerate(loader):
         if not cpu:
-            images = images.cuda()
-            labels = labels.cuda()
+            images = images.to(device)
+            labels = labels.to(device)
 
         inputs = Variable(images)
         with torch.no_grad():

@@ -25,7 +25,7 @@ def load_config(config_path):
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
-def setup_data(config, data_path="../datasets/cityscapes"):
+def setup_data(config, data_path="datasets/cityscapes"):
     """Initialize and setup the data module."""
     data_module_name, class_name = config["data"]["class_path"].rsplit(".", 1)
     
