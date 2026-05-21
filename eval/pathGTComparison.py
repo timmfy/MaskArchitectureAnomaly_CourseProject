@@ -4,8 +4,6 @@ from PIL import Image
 
 def maskGt(pathGT, target_transform): 
 
-
-
     mask = Image.open(pathGT)
     mask = target_transform(mask)
     ood_gts = np.array(mask)

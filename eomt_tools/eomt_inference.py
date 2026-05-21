@@ -88,7 +88,7 @@ def infer_semantic(model, img, target, device, img_size, ignore_index=255):
     target_array = model.to_per_pixel_targets_semantic([target], ignore_index)[0].numpy()
     return pred_array, target_array
 
-def plot_semantic_results(img, pred_array, target_array, ignore_index=255):
+def plot_semantic_results(img, pred_array, target_array, title, ignore_index=255):
     """Plot original image, prediction, and target for semantic segmentation."""
     mapping = create_mapping([pred_array, target_array], ignore_index)
 
@@ -106,6 +106,7 @@ def plot_semantic_results(img, pred_array, target_array, ignore_index=255):
     for ax in axes:
         ax.axis("off")
 
+    plt.suptitle(title, fontsize=15)
     plt.tight_layout()
     plt.show()
 
@@ -156,7 +157,7 @@ def draw_black_border(sem, inst, mapping):
     out[border] = 0
     return out
 
-def plot_panoptic_results(model, img, sem_pred, inst_pred, sem_target, inst_target):
+def plot_panoptic_results(model, img, sem_pred, inst_pred, sem_target, inst_target, title):
     """Plot original image, prediction, and target for panoptic segmentation."""
     all_ids = np.union1d(np.unique(sem_pred), np.unique(sem_target))
     mapping = {
@@ -186,6 +187,7 @@ def plot_panoptic_results(model, img, sem_pred, inst_pred, sem_target, inst_targ
     for ax in axes:
         ax.axis("off")
 
+    plt.suptitle(title, fontsize=15)
     plt.tight_layout()
     plt.show()
 

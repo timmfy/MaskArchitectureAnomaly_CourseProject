@@ -10,8 +10,7 @@ root_path = os.path.abspath(".")
 if root_path not in sys.path:
     sys.path.insert(0, root_path)
 
-import eomt_setup
-import eomt_inference
+from eomt_tools import eomt_setup, eomt_inference
 import os.path as osp
 from argparse import ArgumentParser
 from ood_metrics import fpr_at_95_tpr, calc_metrics, plot_roc, plot_pr,plot_barcode
@@ -23,40 +22,40 @@ import matplotlib.pyplot as plt
 
 from pathGTComparison import maskGt
 
-def salva_predizione(immagine_tensor, score_anomalia, ground_truth, nome_file_salvataggio, output_dir, nome_metrica="Score"):
+def save_prediction(image_tensor, anomaly_score, ground_truth, save_filename, output_dir, metric_name="Score"):
     """
-    Salva un'immagine con l'originale, la heatmap e la ground truth a colori.
+    Save an image composed of the original image, the heatmap, and the colored ground truth.
     """
-    fig, assi = plt.subplots(1, 3, figsize=(18, 5))
-    
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
     os.makedirs(output_dir, exist_ok=True)
-    img_np = immagine_tensor.squeeze(0).cpu().permute(1, 2, 0).numpy()
+    img_np = image_tensor.squeeze(0).cpu().permute(1, 2, 0).numpy()
     if img_np.max() > 1.0:
         img_np = img_np / 255.0
     img_np = np.clip(img_np, 0, 1)
-    
-    assi[0].imshow(img_np)
-    assi[0].set_title("Immagine Originale")
-    assi[0].axis('off')
-    
-    mappa = assi[1].imshow(score_anomalia, cmap='jet')
-    assi[1].set_title(f"Predizione ({nome_metrica})")
-    assi[1].axis('off')
-    fig.colorbar(mappa, ax=assi[1], fraction=0.046, pad=0.04)
-    
+
+    axes[0].imshow(img_np)
+    axes[0].set_title("Original Image")
+    axes[0].axis('off')
+
+    heatmap_im = axes[1].imshow(anomaly_score, cmap='jet')
+    axes[1].set_title(f"Prediction ({metric_name})")
+    axes[1].axis('off')
+    fig.colorbar(heatmap_im, ax=axes[1], fraction=0.046, pad=0.04)
+
     h, w = ground_truth.shape
     gt_color = np.zeros((h, w, 3), dtype=np.float32)
-    
-    gt_color[ground_truth == 0] = [0.2, 0.2, 0.2]   # Strada (Valore 0) -> Grigio scuro
-    gt_color[ground_truth == 1] = [1.0, 0.0, 0.0]   # Anomalia (Valore 1) -> ROSSO
-    gt_color[ground_truth == 255] = [1.0, 1.0, 1.0] # Ignora (Valore 255) -> Bianco
-    
-    assi[2].imshow(gt_color)
-    assi[2].set_title("Ground Truth (Valuation)")
-    assi[2].axis('off')
-    
+
+    gt_color[ground_truth == 0] = [0.2, 0.2, 0.2]
+    gt_color[ground_truth == 1] = [1.0, 0.0, 0.0]
+    gt_color[ground_truth == 255] = [1.0, 1.0, 1.0]
+
+    axes[2].imshow(gt_color)
+    axes[2].set_title("Ground Truth (Colored)")
+    axes[2].axis('off')
+
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, nome_file_salvataggio), bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, save_filename), bbox_inches='tight')
     plt.close(fig)
 
 seed = 42
@@ -113,9 +112,7 @@ def main():
     ood_gts_list = []
 
     os.makedirs("results_anomaly", exist_ok=True)
-    if not os.path.exists(f'results_anomaly/results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.csv'):
-        open(f'results_anomaly/results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.csv', 'w').close()
-    file = open(f'results_anomaly/results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.csv', 'a')
+    file = open(f'results_anomaly/results_{args.loadWeights.split("/")[-1].split(".")[0]}_{args.loadDataset}.csv', 'w')
 
     # --- MODEL LOADING ---
 
@@ -182,7 +179,7 @@ def main():
              anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
              anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
              anomaly_score_RbA_list.append(anomaly_score_RbA)
-             salva_predizione(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", output_dir, "MSP")
+             save_prediction(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", output_dir, "MSP")
 
     anomaly_scores = {
         "MSP": np.array(anomaly_score_MSP_list),

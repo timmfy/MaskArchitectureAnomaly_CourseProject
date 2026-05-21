@@ -9,4 +9,5 @@ __pycache__/
 .vscode/
 /images/
 /results_anomaly/
+/results_semantic/
 /logits/
