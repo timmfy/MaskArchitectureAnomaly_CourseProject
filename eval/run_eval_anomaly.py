@@ -4,7 +4,7 @@ Run anomaly eval scripts for configured model/dataset combos,
 then consolidate all per-run CSVs into one comparison CSV.
 
 Usage (from repo root):
-  python eval/collect_results.py \
+  python eval/run_eval_anomaly.py \
     --datasets RoadObsticle21 \
     --erfnet-weights trained_models/erfnet_pretrained.pth \
     --eomt-models eomt/weights/eomt_cityscapes.bin:eomt/configs/dinov2/cityscapes/semantic/eomt_base_640.yaml \
@@ -147,7 +147,7 @@ def main():
     results_dir = os.path.join(ROOT_DIR, "results_anomaly")
     all_rows = []
     for fname in sorted(os.listdir(results_dir)):
-        if fname.endswith(".csv") and os.path.join(results_dir, fname) != output_csv:
+        if fname.endswith(".csv") and os.path.join(results_dir, fname) != output_csv and not fname.__contains__("temperature"):
             all_rows.extend(read_results_csv(os.path.join(results_dir, fname)))
 
     fieldnames = ["Model", "Dataset", "Method", "AUPRC", "FPR@TPR95"]

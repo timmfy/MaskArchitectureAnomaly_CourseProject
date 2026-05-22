@@ -39,10 +39,8 @@ Put model weights on Google Drive and point these variables at them.
 
 | Notebook | Purpose |
 |---|---|
-| `semantic_segmentation.ipynb` | Demo images + quantitative comparison (mIoU) for ERFNet and all EoMT variants → `results_semantic/comparison.csv` |
-| `anomaly_segmentation.ipynb` | Demo anomaly heatmaps + model comparison (AUPRC, FPR@TPR95) + temperature scaling → `results_anomaly/` |
-| `eomt_finetune.ipynb` | Fine-tune EoMT COCO on Cityscapes (training workflow) |
-
+| `semantic_segmentation.ipynb`  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/timmfy/MaskArchitectureAnomaly_CourseProject/blob/main/semantic_segmentation.ipynb)| Demo images + quantitative comparison (mIoU) for ERFNet and all EoMT variants → `results_semantic/comparison.csv` |
+| `anomaly_segmentation.ipynb` [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/timmfy/MaskArchitectureAnomaly_CourseProject/blob/main/anomaly_segmentation.ipynb)| Demo anomaly heatmaps + model comparison (AUPRC, FPR@TPR95) + temperature scaling → `results_anomaly/` |
 ---
 
 ## Weights
@@ -112,7 +110,7 @@ datasets/
 ### Anomaly comparison CSV
 
 ```bash
-python eval/collect_results.py \
+python eval/run_eval_anomaly.py \
   --datasets RoadObsticle21 \
   --erfnet-weights trained_models/erfnet_pretrained.pth \
   --eomt-models eomt/weights/eomt_cityscapes.bin:eomt/configs/dinov2/cityscapes/semantic/eomt_base_640.yaml \
@@ -121,11 +119,10 @@ python eval/collect_results.py \
 
 Add `--skip-run` to consolidate already-computed per-run CSVs without re-running inference.
 
-### ERFNet mIoU on Cityscapes
+### Semantic comparison CSV
 
 ```bash
-cd eval
-python eval_iou.py --loadDir ../trained_models/ --loadWeights erfnet_pretrained.pth \
+python eval/run_eval_semantic.py --loadDir ../trained_models/ --loadWeights erfnet_pretrained.pth \
   --datadir ../datasets/cityscapes/
 ```
 

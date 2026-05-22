@@ -20,7 +20,7 @@ except ImportError:
 
 # Import mapping if available
 try:
-    from coco_to_cityscape import coco_to_cityscape
+    from eomt_tools.coco_to_cityscape import coco_to_cityscape
 except ImportError:
     coco_to_cityscape = {}
 
