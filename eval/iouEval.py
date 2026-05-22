@@ -24,23 +24,19 @@ class iouEval:
         #print ("X is cuda: ", x.is_cuda)
         #print ("Y is cuda: ", y.is_cuda)
 
-        if (x.is_cuda or y.is_cuda):
-            x = x.cuda()
-            y = y.cuda()
+        # Keep tensors on the same device
+        if y.device != x.device:
+            y = y.to(x.device)
 
         #if size is "batch_size x 1 x H x W" scatter to onehot
         if (x.size(1) == 1):
-            x_onehot = torch.zeros(x.size(0), self.nClasses, x.size(2), x.size(3))  
-            if x.is_cuda:
-                x_onehot = x_onehot.cuda()
+            x_onehot = torch.zeros(x.size(0), self.nClasses, x.size(2), x.size(3), device=x.device)
             x_onehot.scatter_(1, x, 1).float()
         else:
             x_onehot = x.float()
 
         if (y.size(1) == 1):
-            y_onehot = torch.zeros(y.size(0), self.nClasses, y.size(2), y.size(3))
-            if y.is_cuda:
-                y_onehot = y_onehot.cuda()
+            y_onehot = torch.zeros(y.size(0), self.nClasses, y.size(2), y.size(3), device=y.device)
             y_onehot.scatter_(1, y, 1).float()
         else:
             y_onehot = y.float()
@@ -64,9 +60,9 @@ class iouEval:
         fnmult = (1-x_onehot) * (y_onehot) #times prediction says its not that class and gt says it is
         fn = torch.sum(torch.sum(torch.sum(fnmult, dim=0, keepdim=True), dim=2, keepdim=True), dim=3, keepdim=True).squeeze() 
 
-        self.tp += tp.double().cpu()
-        self.fp += fp.double().cpu()
-        self.fn += fn.double().cpu()
+        self.tp += tp.detach().cpu().double()
+        self.fp += fp.detach().cpu().double()
+        self.fn += fn.detach().cpu().double()
 
     def getIoU(self):
         num = self.tp

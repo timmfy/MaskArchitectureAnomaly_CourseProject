@@ -19,12 +19,36 @@ def is_image(filename):
     return any(filename.endswith(ext) for ext in EXTENSIONS)
 
 def is_label(filename):
-    return filename.endswith("_labelTrainIds.png")
+    return filename.endswith("_labelTrainIds.png") or filename.endswith("_labelIds.png")
+
+
+def cityscapes_key_from_image(filename):
+    base = os.path.basename(filename)
+    if base.endswith("_leftImg8bit.png"):
+        return base[:-len("_leftImg8bit.png")]
+    if base.endswith("_leftImg8bit.jpg"):
+        return base[:-len("_leftImg8bit.jpg")]
+    return os.path.splitext(base)[0]
+
+
+def cityscapes_key_from_label(filename):
+    base = os.path.basename(filename)
+    if base.endswith("_gtFine_labelTrainIds.png"):
+        return base[:-len("_gtFine_labelTrainIds.png")]
+    if base.endswith("_gtFine_labelIds.png"):
+        return base[:-len("_gtFine_labelIds.png")]
+    return os.path.splitext(base)[0]
 
 def image_path(root, basename, extension):
     return os.path.join(root, f'{basename}{extension}')
 
 def image_path_city(root, name):
+    if os.path.isabs(name):
+        return name
+    root_norm = os.path.normpath(root)
+    name_norm = os.path.normpath(name)
+    if name_norm.startswith(root_norm + os.sep):
+        return name
     return os.path.join(root, f'{name}')
 
 def image_basename(filename):
@@ -68,19 +92,49 @@ class cityscapes(Dataset):
 
         self.images_root = os.path.join(root, 'leftImg8bit/' + subset)
         self.labels_root = os.path.join(root, 'gtFine/' + subset)
-        print(self.images_root, self.labels_root)
-        self.filenames = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.images_root)) for f in fn if is_image(f)]
-        self.filenames.sort()
+        image_files = [
+            os.path.join(dp, f)
+            for dp, _, fn in os.walk(os.path.expanduser(self.images_root))
+            for f in fn if is_image(f)
+        ]
+        image_files.sort()
 
-        self.filenamesGt = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.labels_root)) for f in fn if is_label(f)]
-        self.filenamesGt.sort()
+        label_files = [
+            os.path.join(dp, f)
+            for dp, _, fn in os.walk(os.path.expanduser(self.labels_root))
+            for f in fn if is_label(f)
+        ]
+        label_files.sort()
+
+        labels_by_key = {}
+        for f in label_files:
+            key = cityscapes_key_from_label(f)
+            # Prefer trainIds masks when both are present.
+            if key in labels_by_key and labels_by_key[key].endswith("_labelTrainIds.png"):
+                continue
+            labels_by_key[key] = f
+
+        self.samples = []
+        for image_file in image_files:
+            key = cityscapes_key_from_image(image_file)
+            label_file = labels_by_key.get(key)
+            if label_file is not None:
+                self.samples.append((image_file, label_file))
+
+        self.filenames = [sample[0] for sample in self.samples]
+        self.filenamesGt = [sample[1] for sample in self.samples]
+
+        if len(self.samples) == 0:
+            raise RuntimeError(
+                f"No Cityscapes pairs found in {self.images_root} and {self.labels_root}. "
+                "Expected *_labelTrainIds.png or *_labelIds.png labels."
+            )
 
         self.input_transform = input_transform
         self.target_transform = target_transform
 
     def __getitem__(self, index):
-        filename = self.filenames[index]
-        filenameGt = self.filenamesGt[index]
+        filename, filenameGt = self.samples[index]
 
         #print(filename)
 
@@ -97,5 +151,5 @@ class cityscapes(Dataset):
         return image, label, filename, filenameGt
 
     def __len__(self):
-        return len(self.filenames)
+        return len(self.samples)
 

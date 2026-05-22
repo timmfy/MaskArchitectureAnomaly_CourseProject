@@ -1,9 +1,8 @@
 import os
 import csv
 import torch
-import torch.nn.functional as F
-import numpy as np
 from eomt_tools import eomt_setup, eomt_inference
+
 
 # Define Cityscapes classes for shared use
 CITYSCAPES_CLASSES = [
@@ -13,52 +12,23 @@ CITYSCAPES_CLASSES = [
     'motorcycle', 'bicycle'
 ]
 
-def load_my_state_dict(model, state_dict):
-    """Custom function to load ERFNet weights, handling 'module.' prefix."""
-    own_state = model.state_dict()
-    for name, param in state_dict.items():
-        if name not in own_state:
-            if name.startswith("module."):
-                key = name.split("module.")[-1]
-                if key in own_state:
-                    own_state[key].copy_(param)
-                else:
-                    continue
-            else:
-                continue
-        else:
-            own_state[name].copy_(param)
-    return model
-
 def evaluate_model(label, weights, cfg_path, data_path, device, kind, limit, ignore_index=255):
     """
     Evaluates a single model on Cityscapes validation set.
     Returns: {"model", "weights", "mIoU", "per_class"}
     """
-    print(f"Evaluating {label} ({kind}) ...")
-    
-    # Import here to avoid circular dependencies or unnecessary loads
-    from eval import erfnet, iouEval, eval_cityscapes_color
-    from eval.dataset import cityscapes
-    from eval.eval_cityscapes_color import input_transform_cityscapes, target_transform_cityscapes, evaluate_erfnet
+    num_classes_to_report = 19
+    model = None
 
+    from eval import eval_iou
     if kind == "erfnet":
-        num_classes = 20 # As in eval_cityscapes_color.py
-        model = erfnet.ERFNet(num_classes)
-        # Load weights
-        state_dict = torch.load(weights, map_location='cpu', weights_only=False)
-        model = load_my_state_dict(model, state_dict)
-        model = model.to(device)
-        
-        loader = torch.utils.data.DataLoader(
-            cityscapes(data_path, input_transform_cityscapes, target_transform_cityscapes, subset='val'),
-            batch_size=1, shuffle=False, num_workers=4
+        miou, ious = eval_iou.evaluate_erfnet(
+            weightsPath=weights,
+            datadir=data_path,
+            limit=limit,
+            ignore_index=ignore_index if ignore_index != 255 else 19,
         )
-        
-        miou, ious = evaluate_erfnet(model, loader, device, limit=limit, save_dir=None)
-        num_classes_to_report = 19
     else:
-        num_classes_to_report = 19
         cfg = eomt_setup.load_config(cfg_path)
         data = eomt_setup.setup_data(cfg, data_path=data_path)
         
@@ -84,7 +54,8 @@ def evaluate_model(label, weights, cfg_path, data_path, device, kind, limit, ign
     }
     
     # Clean up
-    del model
+    if model is not None:
+        del model
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     

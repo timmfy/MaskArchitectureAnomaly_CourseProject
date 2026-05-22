@@ -3,29 +3,62 @@
 # Eduardo Romera
 #######################
 
-import numpy as np
 import torch
-import torch.nn.functional as F
 import os
-import importlib
 import time
 
 from PIL import Image
 
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, CenterCrop, Normalize, Resize
-from torchvision.transforms import ToTensor, ToPILImage
+from torchvision.transforms import Compose, Resize
+from torchvision.transforms import ToTensor
 
 from dataset import cityscapes
 from erfnet import ERFNet
-from transform import Relabel, ToLabel, Colorize
+from transform import Relabel, ToLabel
 from iouEval import iouEval, getColorEntry
 
-NUM_CHANNELS = 3
 NUM_CLASSES = 20
 
-image_transform = ToPILImage()
+
+class LabelIdsToTrainIds:
+
+    def __init__(self):
+        lut = torch.full((256,), 255, dtype=torch.long)
+
+        # Pass-through for existing trainIds and ignore.
+        for train_id in range(19):
+            lut[train_id] = train_id
+        lut[255] = 255
+
+        # Cityscapes labelId -> trainId mapping.
+        lut[7] = 0
+        lut[8] = 1
+        lut[11] = 2
+        lut[12] = 3
+        lut[13] = 4
+        lut[17] = 5
+        lut[19] = 6
+        lut[20] = 7
+        lut[21] = 8
+        lut[22] = 9
+        lut[23] = 10
+        lut[24] = 11
+        lut[25] = 12
+        lut[26] = 13
+        lut[27] = 14
+        lut[28] = 15
+        lut[31] = 16
+        lut[32] = 17
+        lut[33] = 18
+
+        self.lut = lut
+
+    def __call__(self, tensor):
+        assert isinstance(tensor, torch.LongTensor) or isinstance(tensor, torch.ByteTensor), 'tensor needs to be LongTensor'
+        return self.lut[tensor]
+
 input_transform_cityscapes = Compose([
     Resize(512, Image.BILINEAR),
     ToTensor(),
@@ -33,26 +66,25 @@ input_transform_cityscapes = Compose([
 target_transform_cityscapes = Compose([
     Resize(512, Image.NEAREST),
     ToLabel(),
+    LabelIdsToTrainIds(),
     Relabel(255, 19),   #ignore label to 19
 ])
 
 def evaluate_erfnet(
-    loadDir="../weights/",
-    loadWeights="erfnet_pretrained.pth",
-    loadModel="erfnet.py",
+    weightsPath="weights/erfnet_pretrained.pth",
+    modelPath="erfnet.py",
     subset="val",  # can be val or train (must have labels)
     datadir="/home/shyam/ViT-Adapter/segmentation/data/cityscapes/",
     num_workers=4,
     batch_size=1,
     cpu=False,
-    state=None
+    state=None,
+    limit=None,
+    ignore_index=19
 ):
 
-    modelpath = loadDir + loadModel
-    weightspath = loadDir + loadWeights
-
-    print("Loading model: " + modelpath)
-    print("Loading weights: " + weightspath)
+    print("Loading model: " + modelPath)
+    print("Loading weights: " + weightsPath)
 
     model = ERFNet(NUM_CLASSES)
 
@@ -67,19 +99,19 @@ def evaluate_erfnet(
                 if name.startswith("module."):
                     own_state[name.split("module.")[-1]].copy_(param)
                 else:
-                    print(name, " not loaded")
+                    print(f"{name} not loaded")
                     continue
             else:
                 own_state[name].copy_(param)
         return model
 
-    model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
+    model = load_my_state_dict(model, torch.load(weightsPath, map_location=lambda storage, loc: storage))
     print("Model and weights LOADED successfully")
 
     model.eval()
 
     if not os.path.exists(datadir):
-        print("Error: datadir could not be loaded")
+        print(f"Error: datadir could not be loaded: {datadir}")
 
     loader = DataLoader(
         cityscapes(datadir, input_transform_cityscapes, target_transform_cityscapes, subset=subset), 
@@ -88,11 +120,14 @@ def evaluate_erfnet(
         shuffle=False
     )
 
-    iouEvalVal = iouEval(NUM_CLASSES)
+    iouEvalVal = iouEval(NUM_CLASSES, ignoreIndex=ignore_index)
 
     start = time.time()
 
     for step, (images, labels, filename, filenameGt) in enumerate(loader):
+        if limit is not None and step >= limit:
+            break
+
         if not cpu:
             images = images.to(device)
             labels = labels.to(device)
@@ -105,9 +140,11 @@ def evaluate_erfnet(
 
         filenameSave = filename[0].split("leftImg8bit/")[1] 
 
-        print(step, filenameSave)
+        print(f"{step} {filenameSave}")
 
     iouVal, iou_classes = iouEvalVal.getIoU()
+
+    iou_classes_float = [float(v) for v in iou_classes]
 
     iou_classes_str = []
     for i in range(iou_classes.size(0)):
@@ -115,9 +152,8 @@ def evaluate_erfnet(
         iou_classes_str.append(iouStr)
 
     print("---------------------------------------")
-    print("Took ", time.time()-start, "seconds")
+    print(f"Took {time.time()-start} seconds")
     print("=======================================")
-    #print("TOTAL IOU: ", iou * 100, "%")
     print("Per-Class IoU:")
     print(iou_classes_str[0], "Road")
     print(iou_classes_str[1], "sidewalk")
@@ -140,9 +176,9 @@ def evaluate_erfnet(
     print(iou_classes_str[18], "bicycle")
     print("=======================================")
     iouStr = getColorEntry(iouVal) + '{:0.2f}'.format(iouVal*100) + '\033[0m'
-    print("MEAN IoU: ", iouStr, "%")
+    print(f"MEAN IoU: {iouStr}%")
 
-    return iouStr, iou_classes_str
+    return iouVal, iou_classes
 
 if __name__ == '__main__':
 
