@@ -91,14 +91,14 @@ def main():
     parser = ArgumentParser()
     parser.add_argument(
         "--input",
-        default="/home/shyam/Mask2Former/unk-eval/RoadObsticle21/images/*.webp",
+        default="datasets/Validation_Dataset/RoadAnomaly21/images/*.*",
         nargs="+",
         help="A list of space separated input images; "
         "or a single glob pattern such as 'directory/*.jpg'",
     )  
     parser.add_argument('--loadDir',default="../trained_models/")
     parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
-    parser.add_argument('--loadDataset', default="RoadObsticle21")
+    parser.add_argument('--loadDataset', default="RoadAnomaly21")
     parser.add_argument('--loadModel', default="erfnet.py")
     parser.add_argument('--subset', default="val")  #can be val or train (must have labels)
     parser.add_argument('--num-workers', type=int, default=4)
@@ -143,11 +143,9 @@ def main():
     model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
     print ("Model and weights loaded successfully")
     model.eval()
-    
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
         dataset_name = os.path.basename(os.path.dirname(os.path.dirname(path)))
         output_dir = os.path.join("images", dataset_name, "erfnet")
-
         images = input_transform((Image.open(path).convert('RGB'))).unsqueeze(0).float().to(device)
         # images = images.permute(0,3,1,2)
         with torch.no_grad():
@@ -170,16 +168,16 @@ def main():
         if "RoadAnomaly" in pathGT:
            pathGT = pathGT.replace("jpg", "png")  
 
-        ood_gts, mask = maskGt(pathGT, target_transform)
-
-        if ood_gts is None:
-            continue              
+        result = maskGt(pathGT, target_transform)
+        if result is None:
+            continue
         else:
+            ood_gts, _ = result
             ood_gts_list.append(ood_gts)
             anomaly_score_MSP_list.append(anomaly_score_MSP)
             anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
             anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
-            base_name = os.path.basename(path)
+            base_name = os.path.basename(path).split('.')[0]
             heatmap_filename = f"heatmap_{base_name}.png"
             save_prediction(
                 image_tensor=images,
@@ -189,10 +187,7 @@ def main():
                 output_dir=output_dir,
                 metric_name="MSP", 
             )
-
-
-        del result, anomaly_score_MaxEntropy, anomaly_score_MaxLogit, anomaly_score_MSP, ood_gts, mask
-
+            
     anomaly_scores = {
         "MSP": np.array(anomaly_score_MSP_list),
         "MaxLogit": np.array(anomaly_score_MaxLogit_list),

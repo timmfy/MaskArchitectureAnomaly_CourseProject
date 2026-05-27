@@ -169,17 +169,19 @@ def main():
         if "RoadAnomaly" in pathGT:
            pathGT = pathGT.replace("jpg", "png")  
 
-        ood_gts, mask = maskGt(pathGT, target_transform)
+        result = maskGt(pathGT, target_transform)
 
-        if ood_gts is None:
-            continue              
+        if result is None:
+            continue
         else:
-             ood_gts_list.append(ood_gts)
-             anomaly_score_MSP_list.append(anomaly_score_MSP)
-             anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
-             anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
-             anomaly_score_RbA_list.append(anomaly_score_RbA)
-             save_prediction(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", output_dir, "MSP")
+            ood_gts, _ = result
+            ood_gts_list.append(ood_gts)          
+            ood_gts_list.append(ood_gts)
+            anomaly_score_MSP_list.append(anomaly_score_MSP)
+            anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
+            anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
+            anomaly_score_RbA_list.append(anomaly_score_RbA)
+            save_prediction(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", output_dir, "MSP")
 
     anomaly_scores = {
         "MSP": np.array(anomaly_score_MSP_list),
