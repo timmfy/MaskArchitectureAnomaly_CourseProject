@@ -19,3 +19,4 @@ torchmetrics
 torchvision
 transformers
 wandb
+zipfile36
