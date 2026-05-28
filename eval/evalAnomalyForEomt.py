@@ -83,12 +83,13 @@ target_transform = Compose(
     ]
 )
 
-NUM_CLASSES = 19 
+NUM_CLASSES = 19
+NUM_CLASSES_COCO = 133
 
 class DataInfo:
-    def __init__(self):
+    def __init__(self, is_coco=False):
         self.img_size = IMG_SIZE
-        self.num_classes = NUM_CLASSES
+        self.num_classes = NUM_CLASSES if not is_coco else NUM_CLASSES_COCO
 
 def main():
     parser = ArgumentParser()
@@ -101,6 +102,7 @@ def main():
     parser.add_argument('--loadDataset', default="RoadObsticle21")
     parser.add_argument('--loadWeights', default=default_weights)
     parser.add_argument('--loadConf', default=default_conf)
+    parser.add_argument('--coco', action='store_true')
     parser.add_argument('--cpu', action='store_true')
     args = parser.parse_args()
 
@@ -122,12 +124,18 @@ def main():
     weights_path = args.loadWeights
 
     conf = eomt_setup.load_config(config_path)
-    data_info = DataInfo()
-    model = eomt_setup.load_model(conf, data_info, torch.device("cpu"),weights_path = weights_path)
-    
+    data_info = DataInfo(is_coco=args.coco)
 
-    if not args.cpu:
-        model = model.to(device)
+    if args.coco:
+        model = eomt_setup.load_model(conf, data_info, torch.device('cpu'), weights_path=weights_path)
+        if device.type == 'mps':
+            model = model.to(device=device, dtype=torch.float32)
+        else:
+            model = model.to(device)
+    elif not args.cpu:
+        model = eomt_setup.load_model(conf, data_info, device, weights_path=weights_path)
+    else:
+        model = eomt_setup.load_model(conf, data_info, torch.device('cpu'), weights_path=weights_path)
 
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
         dataset_name = os.path.basename(os.path.dirname(os.path.dirname(path)))
@@ -136,16 +144,18 @@ def main():
         save_logit = os.path.join("logits", dataset_name, model_name)
         os.makedirs(save_logit, exist_ok=True)
 
-
-
         images = input_transform((Image.open(path).convert('RGB'))).float().to(device)
         logits = eomt_inference.get_pixel_logits(model, images, IMG_SIZE, device)
         torch.save(logits.cpu(), os.path.join(save_logit, f"logits_{os.path.basename(path).split('.')[0]}.pt"))
 
-        probs = F.softmax(logits, dim=0)
-        
-        logits_np = logits.squeeze(0).cpu().numpy()
-        probs_np = probs.squeeze(0).cpu().numpy()
+        if args.coco:
+            scoring_logits = logits[eomt_inference.INLIER_INDICES]
+        else:
+            scoring_logits = logits
+
+        probs = F.softmax(scoring_logits, dim=0)
+        logits_np = scoring_logits.cpu().numpy()
+        probs_np = probs.cpu().numpy()
 
         epsilon = 1e-7
 
@@ -153,13 +163,13 @@ def main():
         anomaly_score_MSP = 1.0 - np.max(probs_np, axis=0)
         
         # Max Logit
-        anomaly_score_MaxLogit = 1.0 -(np.max(logits_np, axis=0))
+        anomaly_score_MaxLogit = -np.max(logits_np, axis=0)
         
         # Max Entropy
         anomaly_score_MaxEntropy =np.sum(-probs_np * np.log(probs_np + epsilon), axis=0)
 
         # RbA
-        anomaly_score_RbA = -torch.tanh(logits).sum(dim=0).cpu().numpy()
+        anomaly_score_RbA = -torch.tanh(scoring_logits).sum(dim=0).cpu().numpy()
         
         pathGT = path.replace("images", "labels_masks")                
         if "RoadObsticle21" in pathGT:
@@ -175,7 +185,6 @@ def main():
             continue
         else:
             ood_gts, _ = result
-            ood_gts_list.append(ood_gts)          
             ood_gts_list.append(ood_gts)
             anomaly_score_MSP_list.append(anomaly_score_MSP)
             anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)

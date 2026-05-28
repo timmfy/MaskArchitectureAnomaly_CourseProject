@@ -41,6 +41,19 @@ def get_idx_to_cityscapes():
 
 IDX_TO_CITYSCAPES = get_idx_to_cityscapes()
 
+def get_inlier_outlier_indices():
+    inlier_indices = []
+    outlier_indices = []
+    for idx in range(133):
+        coco_id = IDX_TO_COCO.get(idx)
+        if coco_id is not None and coco_id in coco_to_cityscape:
+            inlier_indices.append(idx)
+        else:
+            outlier_indices.append(idx)
+    return inlier_indices, outlier_indices
+
+INLIER_INDICES, OUTLIER_INDICES = get_inlier_outlier_indices()
+
 def map_coco_preds_to_cityscapes(preds):
     """Map COCO predicted indices to Cityscapes train IDs."""
     cs_preds = np.full(preds.shape, 255, dtype=np.uint8)
@@ -233,6 +246,15 @@ def evaluate_semantic(model, dataloader, device, img_size, num_classes=19, ignor
                 target_array = model.to_per_pixel_targets_semantic([target], ignore_index)[0].numpy()
                 
                 if is_coco:
+                    # consider only inlier classes for evaluation
+                    #(that is the COCO classes that map to Cityscapes classes)
+                    inlier_logits = logits[0][INLIER_INDICES]
+                    # take the argmax over the inlier classes
+                    inlier_argmax = inlier_logits.argmax(0).cpu()
+                    # map back to original COCO class indices to get the final predictions
+                    inlier_indices_tensor = torch.tensor(INLIER_INDICES)
+                    preds = inlier_indices_tensor[inlier_argmax].numpy()
+                    # then map COCO predictions to Cityscapes train IDs for evaluation
                     preds = map_coco_preds_to_cityscapes(preds)
                 
                 # Map target and preds to [0, num_classes] range for iouEval

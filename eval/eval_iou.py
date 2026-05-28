@@ -124,7 +124,7 @@ def evaluate_erfnet(
 
     start = time.time()
 
-    for step, (images, labels, filename, filenameGt) in enumerate(loader):
+    for step, (images, labels, _, _) in enumerate(loader):
         if limit is not None and step >= limit:
             break
 
@@ -138,9 +138,6 @@ def evaluate_erfnet(
 
         iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, labels)
 
-        filenameSave = filename[0].split("leftImg8bit/")[1] 
-
-        print(f"{step} {filenameSave}")
 
     iouVal, iou_classes = iouEvalVal.getIoU()
 

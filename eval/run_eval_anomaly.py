@@ -7,7 +7,7 @@ Usage (from repo root):
   python eval/run_eval_anomaly.py \
     --datasets RoadObsticle21 \
     --erfnet-weights trained_models/erfnet_pretrained.pth \
-    --eomt-models eomt/weights/eomt_cityscapes.bin:eomt/configs/dinov2/cityscapes/semantic/eomt_base_640.yaml \
+        --eomt-cityscapes eomt/weights/eomt_cityscapes.bin:eomt/configs/dinov2/cityscapes/semantic/eomt_base_640.yaml \
     --output-csv results_anomaly/comparison.csv
 """
 import os
@@ -22,6 +22,15 @@ ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 
 def _abs(path):
     return path if os.path.isabs(path) else os.path.join(ROOT_DIR, path)
+
+
+def _parse_weight_config(value):
+    if not value:
+        return None
+    if ":" not in value:
+        raise ValueError("Expected 'weight_path:config_path'")
+    weight_path, conf_path = value.split(":", 1)
+    return _abs(weight_path), _abs(conf_path)
 
 
 def run_eval(script_name, extra_args):
@@ -88,10 +97,19 @@ def main():
         help="ERFNet weights path (relative to repo root or absolute)",
     )
     parser.add_argument(
-        "--eomt-models",
-        nargs="*",
-        default=[],
-        help="'weight_path:config_path' pairs (paths relative to repo root or absolute)",
+        "--eomt-cityscapes",
+        type=str,
+        help="weights:config pair for EoMT Cityscapes (paths relative to repo root or absolute)",
+    )
+    parser.add_argument(
+        "--eomt-coco",
+        type=str,
+        help="weights:config pair for EoMT COCO (paths relative to repo root or absolute)",
+    )
+    parser.add_argument(
+        "--eomt-finetuned",
+        type=str,
+        help="weights:config pair for EoMT finetuned (paths relative to repo root or absolute)",
     )
     parser.add_argument(
         "--output-csv",
@@ -126,22 +144,57 @@ def main():
             else:
                 print(f"ERFNet weights not found, skipping: {w}")
 
-        for wc in (args.eomt_models or []):
-            if ":" not in wc:
-                print(f"Skipping malformed entry (expected 'weight:config'): {wc}")
-                continue
-            weight_path, conf_path = wc.split(":", 1)
-            weight_path, conf_path = _abs(weight_path), _abs(conf_path)
-            if not os.path.exists(weight_path):
-                print(f"Weights not found, skipping: {weight_path}")
-                continue
-            for ds in args.datasets:
-                run_eval("evalAnomalyForEomt.py", [
-                    "--input", os.path.join(args.datasets_dir, ds, "images", "*.*"),
-                    "--loadDataset", ds,
-                    "--loadWeights", weight_path,
-                    "--loadConf", conf_path,
-                ])
+        if args.eomt_cityscapes:
+            try:
+                weight_path, conf_path = _parse_weight_config(args.eomt_cityscapes)
+            except ValueError as exc:
+                print(f"Skipping malformed entry for EoMT Cityscapes Pretrained: {exc}")
+            else:
+                if os.path.exists(weight_path):
+                    for ds in args.datasets:
+                        run_eval("evalAnomalyForEomt.py", [
+                            "--input", os.path.join(args.datasets_dir, ds, "images", "*.*"),
+                            "--loadDataset", ds,
+                            "--loadWeights", weight_path,
+                            "--loadConf", conf_path,
+                        ])
+                else:
+                    print(f"Weights not found, skipping: {weight_path}")
+
+        if args.eomt_coco:
+            try:
+                weight_path, conf_path = _parse_weight_config(args.eomt_coco)
+            except ValueError as exc:
+                print(f"Skipping malformed entry for EoMT COCO Pretrained: {exc}")
+            else:
+                if os.path.exists(weight_path):
+                    for ds in args.datasets:
+                        run_eval("evalAnomalyForEomt.py", [
+                            "--input", os.path.join(args.datasets_dir, ds, "images", "*.*"),
+                            "--loadDataset", ds,
+                            "--loadWeights", weight_path,
+                            "--coco",
+                            "--loadConf", conf_path,
+                        ])
+                else:
+                    print(f"Weights not found, skipping: {weight_path}")
+
+        if args.eomt_finetuned:
+            try:
+                weight_path, conf_path = _parse_weight_config(args.eomt_finetuned)
+            except ValueError as exc:
+                print(f"Skipping malformed entry for EoMT Finetuned: {exc}")
+            else:
+                if os.path.exists(weight_path):
+                    for ds in args.datasets:
+                        run_eval("evalAnomalyForEomt.py", [
+                            "--input", os.path.join(args.datasets_dir, ds, "images", "*.*"),
+                            "--loadDataset", ds,
+                            "--loadWeights", weight_path,
+                            "--loadConf", conf_path,
+                        ])
+                else:
+                    print(f"Weights not found, skipping: {weight_path}")
 
     # Consolidate all per-run CSVs
     results_dir = os.path.join(ROOT_DIR, "results_anomaly")
