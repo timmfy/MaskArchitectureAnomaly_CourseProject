@@ -24,11 +24,22 @@ Open `semantic_segmentation.ipynb` or `anomaly_segmentation.ipynb` in Jupyter, e
 
 Each notebook auto-detects Colab, clones the repo, installs dependencies, and mounts Google Drive. The only cell to edit is the path config block:
 
+
+`semantic_segmentation.ipynb`
+
 ```python
 _DRIVE         = '/content/drive/MyDrive/CourseProject'
-DATASET_DIR    = f'{_DRIVE}/CityScapesDataset'
-PRETRAINED_DIR = f'{_DRIVE}/weights'
+DATASET_DIR    = f'{_DRIVE}/datasets/CityScapesDataset'
+WEIGHTS_DIR = f'{_DRIVE}/weights'
 FINETUNED_DIR  = f'{_DRIVE}/checkpoints'
+```
+
+`anomaly_segmentation.ipynb`
+
+```python
+_DRIVE                  = '/content/drive/MyDrive/CourseProject'
+DATASETS_ANOMALY_DIR    = f'{_DRIVE}/datasets/Validation_Dataset'
+WEIGHTS_DIR             = f'{_DRIVE}/weights'
 ```
 
 Put model weights on Google Drive and point these variables at them.
