@@ -104,6 +104,7 @@ def main():
     parser.add_argument('--loadConf', default=default_conf)
     parser.add_argument('--coco', action='store_true')
     parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--save-logits', action='store_true')
     args = parser.parse_args()
 
     # Lists for metrics
@@ -146,7 +147,9 @@ def main():
 
         images = input_transform((Image.open(path).convert('RGB'))).float().to(device)
         logits = eomt_inference.get_pixel_logits(model, images, IMG_SIZE, device)
-        torch.save(logits.cpu(), os.path.join(save_logit, f"logits_{os.path.basename(path).split('.')[0]}.pt"))
+
+        if arg.save_logits:
+            torch.save(logits.cpu(), os.path.join(save_logit, f"logits_{os.path.basename(path).split('.')[0]}.pt"))
 
         if args.coco:
             scoring_logits = logits[eomt_inference.INLIER_INDICES]
