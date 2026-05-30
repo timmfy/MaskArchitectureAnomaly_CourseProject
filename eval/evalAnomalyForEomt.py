@@ -193,7 +193,8 @@ def main():
             anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
             anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
             anomaly_score_RbA_list.append(anomaly_score_RbA)
-            save_prediction(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", output_dir, "MSP")
+            #uncomment in case there is a need for the iamges for the report
+            # save_prediction(images, anomaly_score_MSP, ood_gts, f"out_{os.path.basename(path)}", output_dir, "MSP")
 
     anomaly_scores = {
         "MSP": np.array(anomaly_score_MSP_list),
