@@ -178,15 +178,15 @@ def main():
             anomaly_score_MaxLogit_list.append(anomaly_score_MaxLogit)
             anomaly_score_MaxEntropy_list.append(anomaly_score_MaxEntropy)
             base_name = os.path.basename(path).split('.')[0]
-            heatmap_filename = f"heatmap_{base_name}.png"
-            save_prediction(
-                image_tensor=images,
-                anomaly_score=anomaly_score_MSP,
-                ground_truth=ood_gts,
-                save_filename=heatmap_filename,
-                output_dir=output_dir,
-                metric_name="MSP", 
-            )
+            # heatmap_filename = f"heatmap_{base_name}.png"
+            # save_prediction(
+            #     image_tensor=images,
+            #     anomaly_score=anomaly_score_MSP,
+            #     ground_truth=ood_gts,
+            #     save_filename=heatmap_filename,
+            #     output_dir=output_dir,
+            #     metric_name="MSP", 
+            # )
             
     anomaly_scores = {
         "MSP": np.array(anomaly_score_MSP_list),
