@@ -148,7 +148,7 @@ def main():
         images = input_transform((Image.open(path).convert('RGB'))).float().to(device)
         logits = eomt_inference.get_pixel_logits(model, images, IMG_SIZE, device)
 
-        if arg.save_logits:
+        if args.save_logits:
             torch.save(logits.cpu(), os.path.join(save_logit, f"logits_{os.path.basename(path).split('.')[0]}.pt"))
 
         if args.coco:
