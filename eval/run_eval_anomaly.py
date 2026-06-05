@@ -93,7 +93,7 @@ def main():
     parser.add_argument("--datasets", nargs="+", default=["RoadObsticle21"])
     parser.add_argument(
         "--erfnet-weights",
-        default="trained_models/erfnet_pretrained.pth",
+        default="weights/erfnet_pretrained.pth",
         help="ERFNet weights path (relative to repo root or absolute)",
     )
     parser.add_argument(
