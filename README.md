@@ -169,7 +169,7 @@ Each model is evaluated with three scoring functions:
 
 | Method | Formula |
 |---|---|
-| **MSP** | $1 - \max_{c} P(c|x)$ |
+| **MSP** | $1-\max_{c} P(c\|x)$ |
 | **MaxLogit** | $-\max_{c} z_c$ |
 | **MaxEntropy** | $-\sum_{c} P(c\|x) \log P(c\|x)$ |
 | **RbA** (EoMT only) | $-\sum_{c} \tanh(z_c)$ |
